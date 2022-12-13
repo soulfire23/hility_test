@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    platform: linux/x86_64
+    hostname: db
+    user: "${UID}:${GID}"
+    volumes:
+      - ./services/db/data:/var/lib/mysql
+      - ./services/db/dump:/tmp/dump
+    environment:
+       MYSQL_ROOT_PASSWORD: 'rootpwd'
+       MYSQL_DATABASE: 'hility_loc'
+    ports:
+      - 6033:3306
+
+  web:
+    image: nginx:alpine
+    hostname: web
+    build:
+      context: ./
+      dockerfile: ./services/nginx/Dockerfile
+    ports:
+      - 8000:80
+    volumes:
+      - ../:/var/www/html
+      - ./services/nginx/config/:/etc/nginx/conf.d/
+
+  php:
+    image: php:8.1-fpm-alpine
+    hostname: php
+    user: "${UID}:${GID}"
+    build:
+      context: ./
+      dockerfile: ./services/php/Dockerfile
+    volumes:
+      - ./services/php/config.ini:/usr/local/etc/php/conf.d/config.ini
+      - ../:/var/www/html
+    environment:
+      COMPOSER_MEMORY_LIMIT: 2G
+      XDEBUG_CONFIG: client_host=127.0.0.1 client_port=9000 remote_enable=1 xdebug.mode=debug
+      PHP_IDE_CONFIG: serverName=localhost
+
+  pf_pma:
+    image: phpmyadmin
+    hostname: pma
+    ports:
+      - 81:80
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_HOST=db
+      - PMA_USER=root
+      - PMA_PASSWORD=rootpwd
